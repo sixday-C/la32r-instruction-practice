@@ -53,7 +53,7 @@ module EX_stage(
                       };*/
     wire load_signed;
     wire [1:0] mem_size;
-    wire [11:0] alu_op;
+    wire [12:0] alu_op; // 接收译码级新增的第 12 位 ALU 操作码。
     wire load_op;
     wire ex_gr_we;
     wire [4:0] dest;
