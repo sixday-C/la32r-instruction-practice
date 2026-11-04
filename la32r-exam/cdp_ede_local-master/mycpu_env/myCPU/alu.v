@@ -1,6 +1,6 @@
 // alu
 module alu(
-  input  wire [11:0] alu_op,
+  input  wire [12:0] alu_op,
   input  wire [31:0] alu_src1,
   input  wire [31:0] alu_src2,
   output wire [31:0] alu_result
@@ -10,6 +10,7 @@ wire op_add;   //add operation
 wire op_sub;   //sub operation
 wire op_slt;   //signed compared and set less than
 wire op_sltu;  //unsigned compared and set less than
+wire op_xadd2w; //xaddw operation
 wire op_and;   //bitwise and
 wire op_nor;   //bitwise nor
 wire op_or;    //bitwise or
@@ -32,6 +33,7 @@ assign op_sll  = alu_op[ 8];
 assign op_srl  = alu_op[ 9];
 assign op_sra  = alu_op[10];
 assign op_lui  = alu_op[11];
+assign op_xadd2w = alu_op[12];
 
 wire [31:0] add_sub_result;
 wire [31:0] slt_result;
@@ -44,6 +46,7 @@ wire [31:0] lui_result;
 wire [31:0] sll_result;
 wire [63:0] sr64_result;
 wire [31:0] sr_result;
+wire [31:0] xadd2w_result;
 
 
 // 32-bit adder
@@ -52,6 +55,9 @@ wire [31:0] adder_b;
 wire        adder_cin;
 wire [31:0] adder_result;
 wire        adder_cout;
+
+wire [31:0] xadd2w_a;
+wire [31:0] xadd2w_b;
 
 assign adder_a   = alu_src1;
 assign adder_b   = (op_sub | op_slt | op_sltu) ? ~alu_src2 : alu_src2;  //src1 - src2 rj-rk
@@ -85,6 +91,12 @@ assign sr64_result = {{32{op_sra & alu_src1[31]}}, alu_src1[31:0]} >> alu_src2[4
 
 assign sr_result   = sr64_result[31:0];
 
+// XADD2W result
+assign xadd2w_a=alu_src1[31:0];
+assign xadd2w_b = alu_src2 << 1;
+assign xadd2w_result =xadd2w_a + xadd2w_b;
+
+
 // final result mux
 assign alu_result = ({32{op_add|op_sub}} & add_sub_result)
                   | ({32{op_slt       }} & slt_result)
@@ -95,6 +107,8 @@ assign alu_result = ({32{op_add|op_sub}} & add_sub_result)
                   | ({32{op_xor       }} & xor_result)
                   | ({32{op_lui       }} & lui_result)
                   | ({32{op_sll       }} & sll_result)
-                  | ({32{op_srl|op_sra}} & sr_result);
+                  | ({32{op_srl|op_sra}} & sr_result)
+                  | ({32{op_xadd2w    }} & xadd2w_result)
+                  ;
 
 endmodule

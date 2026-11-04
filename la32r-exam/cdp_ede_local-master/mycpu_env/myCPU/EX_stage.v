@@ -37,7 +37,7 @@ module EX_stage(
             ds_to_es_bus_r <= 0;
         end
     end
-    /*assign ds_to_es_bus = {alu_op       ,  //[151:140] 12 bit
+    /*assign ds_to_es_bus = {alu_op       ,  //[151:140] 13 bit
                        load_op      ,  //[139]      1 bit
                        src1_is_pc   ,  //[138]      1 bit
                        src2_is_imm  ,  //[137]      1 bit
@@ -53,7 +53,7 @@ module EX_stage(
                       };*/
     wire load_signed;
     wire [1:0] mem_size;
-    wire [11:0] alu_op;
+    wire [12:0] alu_op;
     wire load_op;
     wire ex_gr_we;
     wire [4:0] dest;
