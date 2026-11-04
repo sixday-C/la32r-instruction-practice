@@ -73,6 +73,7 @@ wire [ 3:0] op_21_20_d;
 wire [31:0] op_19_15_d;
 
 wire        inst_add_w;
+wire        inst_xbandnz; // 新指令的译码结果，只在编码完全匹配时为 1。
 wire        inst_sub_w;
 wire        inst_slt;
 wire        inst_sltu;
@@ -151,6 +152,7 @@ decoder_2_4  u_dec2(.in(op_21_20 ), .out(op_21_20_d ));
 decoder_5_32 u_dec3(.in(op_19_15 ), .out(op_19_15_d ));
 
 assign inst_add_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h00];
+assign inst_xbandnz = op_31_26_d[6'h3d]; // 高六位 111101 唯一标识此条件分支。
 assign inst_sub_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h02];
 assign inst_slt    = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h04];
 assign inst_sltu   = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h05];
@@ -209,7 +211,7 @@ assign need_ui5  = inst_slli_w | inst_srli_w | inst_srai_w;
 assign need_u12  = inst_andi | inst_ori | inst_xori;
 assign need_si12 = inst_addi_w | inst_ld_w | inst_ld_b | inst_ld_h | inst_ld_bu | inst_ld_hu | inst_st_w | inst_st_b | inst_st_h 
                                 | inst_slti | inst_sltui ;
-assign need_si16 = inst_jirl | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu;
+assign need_si16 = inst_jirl | inst_beq | inst_bne | inst_blt | inst_bge | inst_bltu | inst_bgeu | inst_xbandnz; // 使用带符号的 16 位分支偏移。
 assign need_si20 = inst_lu12i_w | inst_pcaddu12i;
 assign need_si26 = inst_b | inst_bl;
 assign src2_is_4 = inst_jirl | inst_bl;
@@ -225,7 +227,7 @@ assign br_offs = need_si26 ? {{ 4{i26[25]}}, i26[25:0], 2'b0} :
 
 assign jirl_offs = {{14{i16[15]}}, i16[15:0], 2'b0};
 
-assign src_reg_is_rd = inst_beq | inst_bne | inst_st_w | inst_st_b | inst_st_h | inst_blt | inst_bge | inst_bltu | inst_bgeu;
+assign src_reg_is_rd = inst_beq | inst_bne | inst_st_w | inst_st_b | inst_st_h | inst_blt | inst_bge | inst_bltu | inst_bgeu | inst_xbandnz; // rd 字段在此是第二个源寄存器。
 assign src1_is_pc    = inst_jirl | inst_bl | inst_pcaddu12i;
 
 assign src2_is_imm   = inst_slli_w |
@@ -263,7 +265,7 @@ assign mem_size = inst_ld_b ? `B :
                   inst_ld_bu ? `B :
                   0;
 assign dst_is_r1     = inst_bl;
-assign gr_we         = ~inst_st_w & ~inst_st_b & ~inst_st_h & ~inst_beq & ~inst_bne & ~inst_b & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu;
+assign gr_we         = ~inst_st_w & ~inst_st_b & ~inst_st_h & ~inst_beq & ~inst_bne & ~inst_b & ~inst_blt & ~inst_bge & ~inst_bltu & ~inst_bgeu & ~inst_xbandnz; // 分支不写通用寄存器。
 assign mem_we        = inst_st_w | inst_st_b | inst_st_h;
 assign dest          = dst_is_r1 ? 5'd1 : rd;
 
@@ -313,11 +315,12 @@ assign br_taken = (  inst_beq  &&  rj_eq_rd
                   || inst_bge  && !rj_lt_rd
                   || inst_bltu &&  rj_ltu_rd
                   || inst_bgeu && !rj_ltu_rd
+                  || (inst_xbandnz && ((rj_value & rkd_value) != 32'b0)) // 与运算非零才跳转，源值已经过前递。
                   || inst_jirl
                   || inst_bl
                   || inst_b
                   ) && ds_valid && ds_ready_go;
-assign br_target = (inst_beq || inst_bne || inst_blt || inst_bl || inst_b || inst_bge || inst_bltu || inst_bgeu) ? (ds_pc + br_offs) :
+assign br_target = (inst_beq || inst_bne || inst_blt || inst_bl || inst_b || inst_bge || inst_bltu || inst_bgeu || inst_xbandnz) ? (ds_pc + br_offs) : // 用当前 PC 加符号扩展后的字偏移。
                                                    /*inst_jirl*/ (rj_value + jirl_offs);
 
 assign br_bus = {br_taken , br_target};
