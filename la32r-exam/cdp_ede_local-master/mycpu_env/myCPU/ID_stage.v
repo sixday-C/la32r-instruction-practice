@@ -32,7 +32,7 @@ wire [31:0] ds_inst;
 reg         ds_valid;
 wire        ds_ready_go;
 
-wire [11:0] alu_op;
+wire [12:0] alu_op; // 第 12 位专供本题的新运算，原有 12 位保持原意。
 
 wire load_signed;  //加载的数据是否要进行有符号扩展
 wire [1:0] mem_size;  //内存写入/读取的数据大小
@@ -73,6 +73,7 @@ wire [ 3:0] op_21_20_d;
 wire [31:0] op_19_15_d;
 
 wire        inst_add_w;
+wire        inst_xand2_w; // 新指令的译码结果，只在编码完全匹配时为 1。
 wire        inst_sub_w;
 wire        inst_slt;
 wire        inst_sltu;
@@ -151,6 +152,7 @@ decoder_2_4  u_dec2(.in(op_21_20 ), .out(op_21_20_d ));
 decoder_5_32 u_dec3(.in(op_19_15 ), .out(op_19_15_d ));
 
 assign inst_add_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h00];
+assign inst_xand2_w = op_31_26_d[6'h3f] & op_25_22_d[4'h0] & op_21_20_d[2'h0] & op_19_15_d[5'h09]; // 严格匹配题目给出的全部固定位。
 assign inst_sub_w  = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h02];
 assign inst_slt    = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h04];
 assign inst_sltu   = op_31_26_d[6'h00] & op_25_22_d[4'h0] & op_21_20_d[2'h1] & op_19_15_d[5'h05];
@@ -203,6 +205,7 @@ assign alu_op[ 8] = inst_slli_w | inst_sll_w ;
 assign alu_op[ 9] = inst_srli_w | inst_srl_w;
 assign alu_op[10] = inst_srai_w | inst_sra_w ;
 assign alu_op[11] = inst_lu12i_w;
+assign alu_op[12] = inst_xand2_w; // 只为新指令选择新增的 ALU 运算。
 
 //信号
 assign need_ui5  = inst_slli_w | inst_srli_w | inst_srai_w;
@@ -331,11 +334,11 @@ assign {ds_inst,
         rf_wdata //31:0
        } = ws_to_rf_bus;*/
 
-// ds_to_es_bus 总位宽 = 1+2+12+1+1+1+1+1+1+5+32+32+32+32+1 = 155 bit
+// ds_to_es_bus 总位宽 = 1+2+13+1+1+1+1+1+1+5+32+32+32+32+1 = 156 bit，新增一位 ALU 操作码。
 assign ds_to_es_bus = {
-                        load_signed,  //[154]     1  bit
-                        mem_size     ,  //[153:152] 2  bit
-                        alu_op       ,  //[151:140] 12 bit
+                        load_signed,  //[155]     1  bit；新增操作码使总线最高位上移。
+                        mem_size     ,  //[154:153] 2  bit；后续 ALU 位宽增一。
+                        alu_op       ,  //[152:140] 13 bit；第 12 位标记本题的新运算。
                         load_op      ,  //[139]      1 bit
                         src1_is_pc   ,  //[138]      1 bit
                         src2_is_imm  ,  //[137]      1 bit
