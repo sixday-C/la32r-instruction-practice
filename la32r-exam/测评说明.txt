@@ -1,0 +1,10 @@
+在线测评时，你需要把修改好的 cdp_ede_local-master/mycpu_env/myCPU 文件夹压缩为 zip（直接右键 myCPU 文件夹并压缩）以提交，测评机会用你的 cpu 源码编译运行仿真。
+
+注意：你不应在 myCPU 下增加二级目录（即不应该重新整理代码），并且不建议增删任何文件，否则测评结果将不能保证；仅在已有模板文件中修改部分代码就能通过全部四个题目。
+
+如果需要本地测评与调试：
+1. 与平时实验一样，使用 vivado 控制台，cd 到 cdp_ede_local-master/mycpu_env/soc_verify/soc_bram/run_vivado/ 所在目录（注意绝对路径和相对路径的关系），
+然后运行 source create_project.tcl 创建工程。创建的工程也将位于此目录附近，文件名是 loongson.xpr；
+2. 与平时实验类似，将相应题目的 obj 文件夹拷贝到 cdp_ede_local-master/mycpu_env/func（替换原obj文件夹内容，如果有）；
+3. 将相应题目的 golden_trace.txt 拷贝到 cdp_ede_local-master/mycpu_env/gettrace（替换原golden_trace.txt，如果有）；
+4. vivado 中直接点击开始仿真，即可调试、看波形图，出现 PASS 即表明本地测评通过，可以提交到 cg 平台。
