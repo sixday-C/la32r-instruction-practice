@@ -1,6 +1,6 @@
 // alu
 module alu(
-  input  wire [11:0] alu_op,
+  input  wire [12:0] alu_op, // 第 12 位选择本题新增的运算。
   input  wire [31:0] alu_src1,
   input  wire [31:0] alu_src2,
   output wire [31:0] alu_result
@@ -18,6 +18,7 @@ wire op_sll;   //logic left shift
 wire op_srl;   //logic right shift
 wire op_sra;   //arithmetic right shift
 wire op_lui;   //Load Upper Immediate
+wire op_custom; // 新指令专用选择信号，旧指令位保持不变。
 
 // control code decomposition
 assign op_add  = alu_op[ 0];
@@ -32,6 +33,7 @@ assign op_sll  = alu_op[ 8];
 assign op_srl  = alu_op[ 9];
 assign op_sra  = alu_op[10];
 assign op_lui  = alu_op[11];
+assign op_custom = alu_op[12]; // 译码级只在新指令匹配时置位。
 
 wire [31:0] add_sub_result;
 wire [31:0] slt_result;
@@ -41,6 +43,7 @@ wire [31:0] nor_result;
 wire [31:0] or_result;
 wire [31:0] xor_result;
 wire [31:0] lui_result;
+wire [31:0] custom_result; // 本题运算的 32 位最终结果。
 wire [31:0] sll_result;
 wire [63:0] sr64_result;
 wire [31:0] sr_result;
@@ -85,6 +88,8 @@ assign sr64_result = {{32{op_sra & alu_src1[31]}}, alu_src1[31:0]} >> alu_src2[4
 
 assign sr_result   = sr64_result[31:0];
 
+assign custom_result = (alu_src1 & ~alu_src2); // 逐位取反 rk，再与 rj 按位相与。
+
 // final result mux
 assign alu_result = ({32{op_add|op_sub}} & add_sub_result)
                   | ({32{op_slt       }} & slt_result)
@@ -95,6 +100,7 @@ assign alu_result = ({32{op_add|op_sub}} & add_sub_result)
                   | ({32{op_xor       }} & xor_result)
                   | ({32{op_lui       }} & lui_result)
                   | ({32{op_sll       }} & sll_result)
-                  | ({32{op_srl|op_sra}} & sr_result);
+                  | ({32{op_srl|op_sra}} & sr_result)
+                  | ({32{op_custom    }} & custom_result); // 新指令结果只在专用操作码有效时写入输出。
 
 endmodule
